@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import models  # noqa: F401
-from app.database import Base, engine
-from app.routers import info, meetings, notifications, reminders
+from app.database import initialize_database
+from app.routers import auth, info, meetings, notifications, reminders, weather
 
 app = FastAPI(title="Humoind Robot Backend", version="1.0.0")
 
@@ -17,13 +16,15 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+async def on_startup() -> None:
+    await initialize_database()
 
 
 app.include_router(meetings.router, prefix="/api")
 app.include_router(reminders.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(weather.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(info.router, prefix="/api")
 
 

@@ -1,3 +1,3 @@
-from app.routers import info, meetings, notifications, reminders
+from app.routers import auth, info, meetings, notifications, reminders, weather
 
-__all__ = ["meetings", "reminders", "notifications", "info"]
+__all__ = ["meetings", "reminders", "notifications", "weather", "auth", "info"]
