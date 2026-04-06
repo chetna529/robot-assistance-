@@ -1,4 +1,16 @@
 .env
 __pycache__/
 *.pyc
+
+# Credentials
 credentials/*.json
+!credentials/.gitkeep
+
+# Editor
+.vscode/
+
+# Virtual env
+venv/
+
+# Logs
+*.log
