@@ -3,6 +3,7 @@ export const APP_PAGES = [
   { id: "meetings", label: "Meetings" },
   { id: "reminders", label: "Reminders" },
   { id: "notifications", label: "Notifications" },
+  { id: "users", label: "Users" },
   { id: "summary", label: "Executive Summary" },
 ];
 

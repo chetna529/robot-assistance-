@@ -27,3 +27,15 @@ export function createInitialNotificationForm() {
     channel: "email",
   };
 }
+
+export function createInitialUserForm() {
+  return {
+    name: "",
+    email: "",
+    password: "",
+    role: "employee",
+    department: "",
+    preferred_language: "en",
+    is_active: true,
+  };
+}

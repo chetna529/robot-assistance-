@@ -148,6 +148,17 @@ button.btn:hover {
   box-shadow: 0 8px 24px rgba(133, 74, 255, 0.32);
 }
 
+.btn-muted {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+  background: rgba(173, 46, 66, 0.9);
+  color: #fff;
+}
+
 .error-banner {
   margin-top: 14px;
   padding: 12px 14px;
@@ -192,6 +203,10 @@ button.btn:hover {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+
+.stats-grid-wide {
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .stat {
@@ -305,6 +320,13 @@ button.btn:hover {
   margin: 8px 0 0;
   padding-left: 16px;
   color: var(--text-muted);
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .empty-state {
