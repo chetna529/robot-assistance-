@@ -201,6 +201,12 @@ def _add_years(base: datetime, years: int) -> datetime:
     return base.replace(year=year, day=day)
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def _iter_weekly_with_weekdays(
     *,
     base_start: datetime,
@@ -302,6 +308,9 @@ def list_meeting_occurrences(
     if range_end <= range_start:
         raise ValueError("range_end must be after range_start")
 
+    range_start_utc = _as_utc(range_start)
+    range_end_utc = _as_utc(range_end)
+
     duration = meeting.end_time - meeting.start_time
     if duration.total_seconds() <= 0:
         return []
@@ -309,24 +318,25 @@ def list_meeting_occurrences(
     results: list[dict[str, Any]] = []
 
     for occurrence_index, start_at in iter_recurrence_starts(meeting, hard_limit=5000):
-        end_at = start_at + duration
+        start_at_utc = _as_utc(start_at)
+        end_at_utc = start_at_utc + duration
 
-        overlaps = end_at > range_start and start_at < range_end
+        overlaps = end_at_utc > range_start_utc and start_at_utc < range_end_utc
         if overlaps:
             results.append(
                 {
                     "meeting_id": meeting.id,
                     "occurrence_index": occurrence_index,
                     "title": meeting.title,
-                    "start_time": start_at,
-                    "end_time": end_at,
+                    "start_time": start_at_utc,
+                    "end_time": end_at_utc,
                     "availability": getattr(meeting, "availability", "busy"),
                 }
             )
             if len(results) >= limit:
                 break
 
-        if start_at >= range_end and getattr(meeting, "is_recurring", False):
+        if start_at_utc >= range_end_utc and getattr(meeting, "is_recurring", False):
             break
 
     return results

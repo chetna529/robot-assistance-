@@ -12,7 +12,11 @@ from app.services.meeting_calendar_service import (
     sanitize_meeting_payload,
     validate_meeting_calendar,
 )
+from app.services.meeting_service import get_today_meetings, get_upcoming_meetings
+from app.services.notification_service import get_recent_notifications
+from app.services.reminder_service import get_pending_reminders, get_upcoming_reminders
 from app.services.weather_service import get_current_weather, is_weather_enabled
+from app.services.activity_log_service import log_activity
 
 __all__ = [
     "create_or_update_event",
@@ -25,6 +29,12 @@ __all__ = [
     "validate_meeting_calendar",
     "build_google_rrule",
     "list_meeting_occurrences",
+    "get_upcoming_meetings",
+    "get_today_meetings",
+    "get_pending_reminders",
+    "get_upcoming_reminders",
+    "get_recent_notifications",
+    "log_activity",
     "is_weather_enabled",
     "get_current_weather",
 ]

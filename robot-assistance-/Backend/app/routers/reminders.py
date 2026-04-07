@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING
 
 from app.database import get_db, get_next_sequence
+from app.services.activity_log_service import log_activity
+from app.schemas.poc import POCReminder
 from app.schemas.reminder import Reminder as ReminderSchema
 from app.schemas.reminder import ReminderCreate, ReminderUpdate
 
@@ -33,27 +35,40 @@ def _reminder_defaults(document: dict) -> dict:
     return data
 
 
-async def _get_reminder_or_404(db: AsyncIOMotorDatabase, reminder_id: int) -> dict:
+def _reminder_poc_payload(document: dict) -> dict:
+    data = _reminder_defaults(document)
+    status = data.get("status") or ("sent" if data.get("is_sent") else "pending")
+    priority = data.get("priority") or "medium"
+    return {
+        "id": data["id"],
+        "title": data.get("title") or data.get("message") or "Reminder",
+        "trigger_time": data.get("remind_at") or data.get("reminder_time"),
+        "status": status,
+        "priority": priority,
+    }
+
+
+async def _get_reminder_or_404(db: Any, reminder_id: int) -> dict:
     reminder = await db["reminders"].find_one({"id": reminder_id})
     if not reminder:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reminder not found")
     return _reminder_defaults(reminder)
 
 
-@router.get("/reminders", response_model=list[ReminderSchema])
-async def get_all_reminders(db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.get("/reminders", response_model=list[POCReminder])
+async def get_all_reminders(db: Any = Depends(get_db)):
     docs = await db["reminders"].find().sort("remind_at", ASCENDING).to_list(length=5000)
-    return [ReminderSchema.model_validate(_reminder_defaults(doc)) for doc in docs]
+    return [POCReminder.model_validate(_reminder_poc_payload(doc)) for doc in docs]
 
 
-@router.get("/meetings/{meeting_id}/reminders", response_model=list[ReminderSchema])
-async def get_meeting_reminders(meeting_id: int, db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.get("/meetings/{meeting_id}/reminders", response_model=list[POCReminder])
+async def get_meeting_reminders(meeting_id: int, db: Any = Depends(get_db)):
     docs = await db["reminders"].find({"meeting_id": meeting_id}).sort("remind_at", ASCENDING).to_list(length=2000)
-    return [ReminderSchema.model_validate(_reminder_defaults(doc)) for doc in docs]
+    return [POCReminder.model_validate(_reminder_poc_payload(doc)) for doc in docs]
 
 
-@router.post("/reminders", response_model=ReminderSchema, status_code=status.HTTP_201_CREATED)
-async def create_reminder(reminder: ReminderCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.post("/reminders", response_model=POCReminder, status_code=status.HTTP_201_CREATED)
+async def create_reminder(reminder: ReminderCreate, db: Any = Depends(get_db)):
     meeting_doc = await db["meetings"].find_one({"id": reminder.meeting_id})
     if not meeting_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
@@ -85,11 +100,22 @@ async def create_reminder(reminder: ReminderCreate, db: AsyncIOMotorDatabase = D
     }
 
     await db["reminders"].insert_one(reminder_doc)
-    return ReminderSchema.model_validate(_reminder_defaults(reminder_doc))
+    try:
+        await log_activity(
+            db,
+            action="reminder_created",
+            entity_type="reminder",
+            entity_id=reminder_id,
+            performed_by=str(reminder_doc.get("user_id") or "robot"),
+            details={"meeting_id": reminder.meeting_id, "message": reminder.message},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return POCReminder.model_validate(_reminder_poc_payload(reminder_doc))
 
 
-@router.put("/reminders/{reminder_id}", response_model=ReminderSchema)
-async def update_reminder(reminder_id: int, update: ReminderUpdate, db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.put("/reminders/{reminder_id}", response_model=POCReminder)
+async def update_reminder(reminder_id: int, update: ReminderUpdate, db: Any = Depends(get_db)):
     reminder_doc = await _get_reminder_or_404(db, reminder_id)
     update_data = update.model_dump(exclude_unset=True)
 
@@ -120,11 +146,33 @@ async def update_reminder(reminder_id: int, update: ReminderUpdate, db: AsyncIOM
         reminder_doc["is_sent"] = update_data["is_sent"]
 
     await db["reminders"].update_one({"id": reminder_id}, {"$set": reminder_doc})
-    return ReminderSchema.model_validate(_reminder_defaults(reminder_doc))
+    try:
+        await log_activity(
+            db,
+            action="reminder_updated",
+            entity_type="reminder",
+            entity_id=reminder_id,
+            performed_by=str(reminder_doc.get("user_id") or "robot"),
+            details={"meeting_id": reminder_doc.get("meeting_id"), "message": reminder_doc.get("message")},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return POCReminder.model_validate(_reminder_poc_payload(reminder_doc))
 
 
 @router.delete("/reminders/{reminder_id}")
-async def delete_reminder(reminder_id: int, db: AsyncIOMotorDatabase = Depends(get_db)):
+async def delete_reminder(reminder_id: int, db: Any = Depends(get_db)):
     await _get_reminder_or_404(db, reminder_id)
     await db["reminders"].delete_one({"id": reminder_id})
+    try:
+        await log_activity(
+            db,
+            action="reminder_deleted",
+            entity_type="reminder",
+            entity_id=reminder_id,
+            performed_by="robot",
+            details={"reminder_id": reminder_id},
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return {"status": "deleted", "id": reminder_id}
