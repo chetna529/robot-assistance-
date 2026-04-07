@@ -13,4 +13,4 @@ credentials/*.json
 venv/
 
 # Logs
-*.log
+*.log.vscode/
