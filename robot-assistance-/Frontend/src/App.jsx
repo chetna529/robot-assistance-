@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PageNavigation from "./components/PageNavigation";
 import TopBar from "./components/TopBar";
 import {
@@ -98,12 +98,12 @@ export default function App() {
     return getPageFromHash(window.location.hash);
   });
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async (requestCity, requestUnits) => {
     setLoading(true);
 
     const requestEntries = {
-      summary: backendApi.executiveSummary({ city, units }),
-      weather: backendApi.weatherCurrent({ city, units }),
+      summary: backendApi.executiveSummary({ city: requestCity, units: requestUnits }),
+      weather: backendApi.weatherCurrent({ city: requestCity, units: requestUnits }),
       meetings: backendApi.meetings.list(),
       reminders: backendApi.reminders.list(),
       notifications: backendApi.notifications.list(),
@@ -153,11 +153,10 @@ export default function App() {
 
     setError(summarizeFailures(results));
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadDashboard(city, units);
   }, []);
 
   useEffect(() => {
@@ -247,7 +246,7 @@ export default function App() {
 
     try {
       await work();
-      await loadDashboard();
+      await loadDashboard(city, units);
       return true;
     } catch (err) {
       setError(err?.message || fallbackMessage);
@@ -724,7 +723,7 @@ export default function App() {
         loading={loading}
         onCityChange={setCity}
         onUnitsChange={setUnits}
-        onSync={loadDashboard}
+        onSync={() => loadDashboard(city, units)}
       />
 
       <PageNavigation pages={APP_PAGES} activePage={activePage} onPageChange={handlePageChange} />

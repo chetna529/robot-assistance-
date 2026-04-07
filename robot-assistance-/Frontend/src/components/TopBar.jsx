@@ -7,6 +7,13 @@ export default function TopBar({
   onUnitsChange,
   onSync,
 }) {
+  function handleCityKeyDown(event) {
+    if (event.key === "Enter" && !loading) {
+      event.preventDefault();
+      onSync();
+    }
+  }
+
   return (
     <header className="topbar fade-in">
       <div>
@@ -17,7 +24,11 @@ export default function TopBar({
       <div className="topbar-actions">
         <div className="input-group compact">
           <label>City</label>
-          <input value={city} onChange={(event) => onCityChange(event.target.value)} />
+          <input
+            value={city}
+            onChange={(event) => onCityChange(event.target.value)}
+            onKeyDown={handleCityKeyDown}
+          />
         </div>
         <div className="input-group compact">
           <label>Units</label>
