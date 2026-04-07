@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 
 from app.services.google_calendar_service import (
     exchange_google_auth_code,
@@ -31,6 +32,11 @@ async def google_auth_callback(code: str = Query(...), state: str | None = Query
     _ = state
     try:
         result = await exchange_google_auth_code(code)
+        if result.get("authorized"):
+            return RedirectResponse(
+                url="https://calendar.google.com/calendar/r",
+                status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            )
         return {"status": "authorized", **result}
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
